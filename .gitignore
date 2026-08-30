@@ -1,0 +1,98 @@
+### Secrets ###############################################################
+# .env holds DB_PASSWORD, GROQ_API_KEY and SECRET_KEY. Never commit it.
+# Commit a .env.example with empty values instead, so collaborators know
+# which variables they need to set.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+### Python ################################################################
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+### Virtual environments ##################################################
+venv/
+.venv/
+env/
+ENV/
+virtualenv/
+
+### Django ################################################################
+# Local dev database. Migrations ARE committed (they're source, not
+# artifacts) — only the database file itself is ignored.
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+
+# collectstatic output — regenerated on deploy, never edited by hand.
+staticfiles/
+static_root/
+
+# User-uploaded content. media/ is currently ~47 MB of course PDFs, which
+# is both bloat and likely copyrighted textbook material. In production
+# this belongs in object storage (S3 or similar), not the repo.
+media/
+
+*.log
+django_debug.log
+celerybeat-schedule
+celerybeat.pid
+
+### Testing / coverage ####################################################
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# Captured test output — a scratch artifact, not source.
+pytest_out.txt
+
+### Tooling caches ########################################################
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+
+### Editors / OS ##########################################################
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+### Local scratch #########################################################
+# Postman collections export with real bearer tokens and passwords baked
+# into their variable blocks, so they're treated as local-only. Commit a
+# sanitised copy deliberately if you want it shared.
+*postman_collection.json
+*postman collection.json
+
+# Generated documentation dump.
+PROJECT_STATE.md
+
