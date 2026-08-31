@@ -1,11 +1,18 @@
 from django.db.models import Count, Max, Q, Sum
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from learning.models import Attempt, AttemptAnswer, Question
-from .models import Recommendation, StudentProfile
-from .serializers import RecommendationSerializer, StudentProfileSerializer
+from .models import Recommendation, ReviewSchedule, StudentProfile
+from .serializers import (
+    RecommendationSerializer,
+    ReviewScheduleSerializer,
+    StudentProfileSerializer,
+    SubmitReviewSerializer,
+)
 
 
 class MyProfilesView(generics.ListAPIView):
@@ -194,4 +201,68 @@ class AnalyticsOverviewView(APIView):
             "topics": topic_rows,
             "score_trend": trend,
             "most_missed": most_missed,
+        })
+
+
+class DueReviewsView(generics.ListAPIView):
+    # GET /api/mastery/reviews/due/ — every question this student is due
+    # to review right now, soonest-first. The nested question comes from
+    # QuestionPublicSerializer, so correct_option is never exposed.
+    serializer_class = ReviewScheduleSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Filtered to the requesting student, so one student can never
+        # see another's schedule. Model Meta already orders by
+        # next_review_at; select_related avoids an N+1 on the nested
+        # question / quiz / topic labels.
+        return (
+            ReviewSchedule.objects.filter(
+                student=self.request.user,
+                next_review_at__lte=timezone.now(),
+            )
+            .select_related("question__quiz__topic")
+        )
+
+
+class SubmitReviewView(APIView):
+    # POST /api/mastery/reviews/<schedule_id>/submit/
+    # Grades one review answer server-side and advances its schedule.
+    # Like SubmitAttemptView, only the selected option is taken from the
+    # client — a client-supplied correctness flag would let a student
+    # inflate their own spacing intervals.
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, schedule_id):
+        # Same-app import kept local, mirroring AnalyticsOverviewView's
+        # lazy import of calculate_mastery.
+        from .signals import record_review
+
+        # Scoping the lookup to the requesting user means someone else's
+        # schedule 404s rather than 403s — the same privacy convention
+        # GenerateQuizView uses for documents (a 403 would confirm the
+        # row exists).
+        schedule = get_object_or_404(
+            ReviewSchedule.objects.select_related("question__quiz__topic"),
+            id=schedule_id,
+            student=request.user,
+        )
+
+        serializer = SubmitReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        selected_option = serializer.validated_data["selected_option"]
+
+        question = schedule.question
+        is_correct = selected_option == question.correct_option
+
+        schedule = record_review(request.user, question, is_correct)
+
+        # correct_option and the explanation are safe to return here: the
+        # answer has already been submitted, so this is the results-screen
+        # case that QuestionResultSerializer exists for.
+        return Response({
+            "is_correct": is_correct,
+            "correct_option": question.correct_option,
+            "explanation": question.explanation,
+            "schedule": ReviewScheduleSerializer(schedule).data,
         })
