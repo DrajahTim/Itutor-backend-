@@ -72,7 +72,6 @@ class AskChatbotView(APIView):
             student=request.user,
             topic_id=topic_id,
             role="assistant",
-
             content=answer,
         )
 

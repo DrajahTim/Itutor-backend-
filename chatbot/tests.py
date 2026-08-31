@@ -3,29 +3,39 @@ import pytest
 from django.urls import reverse
 
 from .models import ChatMessage, CourseDocument, DocumentChunk
-from .rag_service import build_prompt, retrieve_relevant_chunks
+from .rag_service import build_system_prompt, retrieve_relevant_chunks
 
 
 class FakeChunk:
-    # Lightweight stand-in for a DocumentChunk — build_prompt only ever
-    # touches .content, so a full model instance isn't needed here.
+    # Lightweight stand-in for a DocumentChunk — build_system_prompt only
+    # ever touches .content, so a full model instance isn't needed here.
     def __init__(self, content):
         self.content = content
 
 
-class TestBuildPrompt:
+class TestBuildSystemPrompt:
     # Pure function, no DB, no mocking needed — this is the piece that
     # enforces "answer only from context" / "admit when you don't know".
+    #
+    # The question is deliberately NOT part of this prompt: it's a system
+    # message, and the question is appended separately as the final user
+    # turn so prior turns can sit between the two.
     def test_no_chunks_falls_back_to_general_knowledge_prompt(self):
-        prompt = build_prompt("What is the capital of France?", [])
+        prompt = build_system_prompt([])
         assert "general knowledge" in prompt
-        assert "capital of France" in prompt
 
     def test_with_chunks_restricts_to_context(self):
         chunks = [FakeChunk("Bubble Sort has O(n^2) worst-case complexity.")]
-        prompt = build_prompt("What is Bubble Sort's complexity?", chunks)
+        prompt = build_system_prompt(chunks)
         assert "ONLY the context" in prompt
         assert "Bubble Sort has O(n^2)" in prompt
+
+    def test_mentions_conversation_history_either_way(self):
+        # Both branches must tell the model that earlier turns are there
+        # to be used, otherwise follow-ups get ignored even though the
+        # history is being sent.
+        assert "Earlier messages" in build_system_prompt([])
+        assert "Earlier messages" in build_system_prompt([FakeChunk("x")])
 
 
 @pytest.mark.django_db

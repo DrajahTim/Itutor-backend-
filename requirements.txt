@@ -1,0 +1,53 @@
+# Direct dependencies only, pinned to the versions this project is known
+# to run on. Transitive packages (pdfminer.six, transformers, tokenizers,
+# the torch CUDA chain, etc.) are resolved by pip and deliberately left
+# unpinned here — pinning ~80 packages makes the file unreadable and
+# breaks on any platform whose wheels differ.
+#
+# Install with:
+#   pip install -r requirements.txt
+
+### Framework #############################################################
+Django==6.0.7
+djangorestframework==3.17.1
+
+# JWT authentication. token_blacklist is an installed app, which is what
+# makes BLACKLIST_AFTER_ROTATION work in production settings.
+djangorestframework-simplejwt==5.5.1
+
+# Lets the Vite dev server on localhost:5173 call this API from a browser.
+django-cors-headers==4.9.0
+
+### Database ##############################################################
+# Postgres driver. The -binary variant ships prebuilt wheels, so no local
+# C compiler or libpq headers are needed.
+psycopg2-binary==2.9.12
+
+# Vector column support for DocumentChunk.embedding. Requires the pgvector
+# EXTENSION to be enabled in the database itself — the Python package
+# alone is not enough. See README setup step 4.
+pgvector==0.5.0
+
+### Configuration #########################################################
+# Reads DB_*, SECRET_KEY, GROQ_API_KEY and GROQ_MODEL from .env.
+python-decouple==3.8
+
+### AI / RAG pipeline #####################################################
+# Groq-hosted LLM client, used for both tutor answers and quiz generation.
+groq==1.5.0
+
+# Local embedding model (all-MiniLM-L6-v2, 384 dimensions). Pulls in torch,
+# which is a ~2.5 GB install and by far the heaviest dependency in this
+# file. The model weights themselves download on first use, not at install.
+sentence-transformers==5.6.0
+
+### Document text extraction ##############################################
+# Used by chatbot/document_parsing.py to turn uploaded course material
+# into plain text before chunking.
+pdfplumber==0.11.10
+python-docx==1.2.0
+
+### Testing ###############################################################
+pytest==9.1.1
+pytest-django==4.12.0
+pytest-mock==3.15.1
